@@ -11,6 +11,11 @@
 #pragma comment(lib, "d3dcompiler.lib")
 #include <d3dcompiler.h>
 
+//ImGui includes
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
+
 // For the DirectX Math library
 using namespace DirectX;
 
@@ -20,6 +25,17 @@ using namespace DirectX;
 // --------------------------------------------------------
 void Game::Initialize()
 {
+
+	// Initialize ImGui itself & platform/renderer backends
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(Window::Handle());
+	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
+	// Pick a style (uncomment one of these 3)
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+	//ImGui::StyleColorsClassic();
+	
 	// Helper methods for loading shaders, creating some basic
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
@@ -58,9 +74,10 @@ void Game::Initialize()
 // --------------------------------------------------------
 Game::~Game()
 {
-
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
-
 
 // --------------------------------------------------------
 // Loads shaders from compiled shader object (.cso) files
@@ -225,6 +242,30 @@ void Game::CreateGeometry()
 	}
 }
 
+void Game::UIInfo(float deltaTime) {
+	
+	// Feed fresh data to ImGui
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = deltaTime;
+	io.DisplaySize.x = (float)Window::Width();
+	io.DisplaySize.y = (float)Window::Height();
+
+	// Reset the frame
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	// Determine new input capture
+	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
+	Input::SetMouseCapture(io.WantCaptureMouse);
+
+	// Show the demo window
+	ImGui::ShowDemoWindow();
+}
+
+void Game::UIUpdate() {
+	//ImGui::Begin("Info");
+}
 
 // --------------------------------------------------------
 // Handle resizing to match the new window size
@@ -240,6 +281,11 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	//ui
+	UIInfo(deltaTime);
+	//UIUpdate();
+	
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
@@ -285,6 +331,12 @@ void Game::Draw(float deltaTime, float totalTime)
 			3,     // The number of indices to use (we could draw a subset if we wanted)
 			0,     // Offset to the first index we want to use
 			0);    // Offset to add to each index when looking up vertices
+	}
+	 
+	//prepares ImGUI buffers and uses them to draw on screen
+	{
+		ImGui::Render(); // Turns this frame’s UI into renderable triangles
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // Draws it to the screen
 	}
 
 	// Frame END
