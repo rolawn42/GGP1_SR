@@ -1,11 +1,14 @@
 #include "Game.h"
 #include "Graphics.h"
+#include "Mesh.h"
+
 #include "Vertex.h"
 #include "Input.h"
 #include "PathHelpers.h"
 #include "Window.h"
 
-#include <DirectXMath.h>
+#include "vector"
+#include "deque"
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
@@ -62,6 +65,23 @@ void Game::Initialize()
 		//    these calls will need to happen multiple times per frame
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
+
+		//create constant buffer
+		D3D11_BUFFER_DESC cbDesc{};
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		cbDesc.ByteWidth = 32;
+		cbDesc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+		cbDesc.Usage = D3D11_USAGE_DYNAMIC;
+		cbDesc.MiscFlags = 0;
+		cbDesc.StructureByteStride = 0;
+
+		Graphics::Device->CreateBuffer(&cbDesc, 0, constantBuffer.GetAddressOf()); 
+
+		Graphics::Context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+
+		//initialize vector data
+		colorTint = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		offset = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 }
 
@@ -155,6 +175,7 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::CreateGeometry()
 {
+	
 	// Create some temporary variables to represent colors
 	// - Not necessary, just makes things more readable
 	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -173,7 +194,7 @@ void Game::CreateGeometry()
 	//    knowing the exact size (in pixels) of the image/window/etc.  
 	// - Long story short: Resizing the window also resizes the triangle,
 	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
+	Vertex vertices1[] =
 	{
 		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
 		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
@@ -185,9 +206,56 @@ void Game::CreateGeometry()
 	// - Indices are technically not required if the vertices are in the buffer 
 	//    in the correct order and each one will be used exactly once
 	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
+	unsigned int indices1[] = { 0, 1, 2 };
 
+	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices1, indices1, 3, 3));
+	++i_meshCount;
 
+	Vertex vertices2[] =
+	{
+		{ XMFLOAT3(-0.6f, +0.6f, +0.0f), red },
+		{ XMFLOAT3(-0.3f, +0.3f, +0.0f), blue },
+		{ XMFLOAT3(-0.9f, +0.3f, +0.0f), green },
+		{ XMFLOAT3(-0.9f, +0.9f, +0.0f), green },
+		{ XMFLOAT3(-0.3f, +0.9f, +0.0f), blue },
+	};
+
+	unsigned int indices2[] = { 0, 1, 2, 0, 3, 4 };
+
+	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices2, indices2, 5, 6));
+	++i_meshCount;
+
+	Vertex vertices3[] =
+	{
+		{ XMFLOAT3(+0.0f, +0.9f, +0.0f), red },
+		{ XMFLOAT3(+0.4f, +0.7f, +0.0f), green },
+		{ XMFLOAT3(+0.2f, +0.7f, +0.0f), blue },
+		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
+		{ XMFLOAT3(-0.4f, +0.7f, +0.0f), green },
+		{ XMFLOAT3(-0.2f, +0.7f, +0.0f), blue },
+
+	};
+
+	unsigned int indices3[] = { 0, 1, 2, 1, 3, 2, 4, 5, 3, 5, 4, 0};
+
+	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices3, indices3, 6, 12));
+	++i_meshCount;
+
+	Vertex vertices4[] =
+	{
+		{ XMFLOAT3(+0.6f, +0.6f, +0.0f), red },
+		{ XMFLOAT3(+0.3f, +0.3f, +0.0f), blue },
+		{ XMFLOAT3(+0.9f, +0.3f, +0.0f), green },
+		{ XMFLOAT3(+0.9f, +0.9f, +0.0f), green },
+		{ XMFLOAT3(+0.3f, +0.9f, +0.0f), blue },
+	};
+
+	unsigned int indices4[] = { 2, 1, 0, 4, 3, 0 };
+
+	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices4, indices4, 5, 6));
+	++i_meshCount;
+
+	/*
 	// Create a VERTEX BUFFER
 	// - This holds the vertex data of triangles for a single object
 	// - This buffer is created on the GPU, which is where the data needs to
@@ -239,7 +307,10 @@ void Game::CreateGeometry()
 		// Actually create the buffer with the initial data
 		// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
 		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
+
 	}
+
+	*/
 }
 
 void Game::UIInfo(float deltaTime) {
@@ -258,13 +329,96 @@ void Game::UIInfo(float deltaTime) {
 	// Determine new input capture
 	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
 	Input::SetMouseCapture(io.WantCaptureMouse);
-
-	// Show the demo window
-	ImGui::ShowDemoWindow();
 }
 
-void Game::UIUpdate() {
-	//ImGui::Begin("Info");
+bool demoVisibility = true;
+bool titleBarViz = true;
+bool windowLock = false;
+bool styleEditor = false;
+float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+
+int queueSize = 60;
+float graphInterval = 0.1f; //how long until the graph gets a new value
+float currentWaitTime = 0.0f; //how long has passed since the last new value
+
+float tempOffset[3] = { 0.0f, 0.0f, 0.0f };
+float tempTint[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+std::deque<float> af_framerate(queueSize, 0);
+std::deque<float> af_frametime(queueSize, 0);
+
+ImGuiWindowFlags next_flags = 0;
+
+void Game::UIUpdate(float deltaTime) {
+	ImGuiWindowFlags window_flags = 0;
+
+	ImGui::Begin("Info", 0, next_flags);
+
+	if (ImGui::CollapsingHeader("General")) {
+
+		ImGui::Text("Window Size: %dx%d", Window::Width(), Window::Height());
+
+		if (currentWaitTime >= graphInterval) {
+			af_framerate.pop_front();
+			af_frametime.pop_front();
+
+			af_framerate.push_back(ImGui::GetIO().Framerate);
+			af_frametime.push_back(deltaTime * 1000);
+
+			currentWaitTime = 0;
+		}
+
+		currentWaitTime += deltaTime;
+
+		std::string s_framerate = std::to_string(ImGui::GetIO().Framerate) + " fps";
+		ImGui::PlotHistogram(s_framerate.c_str(), &af_framerate[0], int(af_framerate.size()), 0, NULL, 0.0f, 5000.0f, ImVec2(0.0f, 50.0f), sizeof(float));
+
+		std::string s_frametime = std::to_string(deltaTime * 1000) + " ms";
+		ImGui::PlotHistogram(s_frametime.c_str(), &af_frametime[0], int(af_frametime.size()), 0, NULL, 0.0f, 1.0f, ImVec2(0.0f, 50.0f), sizeof(float));
+
+		ImGui::Text("World Background Color");
+		ImGui::ColorEdit4("RGBA color editor", &color[0]);
+
+		ImGui::Checkbox("Demo Window", &demoVisibility);
+		ImGui::Checkbox("Title Bar", &titleBarViz);
+		ImGui::Checkbox("Lock Window", &windowLock);
+		ImGui::Checkbox("Style Editor", &styleEditor);
+
+		ImGui::DragFloat3("Position Offset", &tempOffset[0], 0.05f, -1.5f, 1.5f);
+		ImGui::ColorEdit4("Color Tint", &tempTint[0]);
+
+		//ImGui::ColorEdit4("RGBA color editor", &text[0]);
+		//ImGui::ColorEdit4("RGBA color editor", &winbg[0]);
+
+		next_flags = window_flags;
+	}
+
+	if (ImGui::CollapsingHeader("Meshes")) {
+		for (unsigned int i = 0; i < i_meshCount; i++) {
+			std::string s_num = "Mesh " + std::to_string(i);
+			if (ImGui::CollapsingHeader(s_num.c_str())) {
+				ImGui::Text("Tris: %d", (apmesh_meshes[i]->GetIndexCount() / 3));
+				ImGui::Text("Verts: %d", (apmesh_meshes[i]->GetVertexCount()));
+				ImGui::Text("Indicies: %d", (apmesh_meshes[i]->GetIndexCount()));
+			}
+		}
+	}
+
+	if (demoVisibility)
+		ImGui::ShowDemoWindow();
+	if (styleEditor)
+		ImGui::ShowStyleEditor();
+	if (windowLock) {
+		window_flags |= ImGuiWindowFlags_NoMove;
+		window_flags |= ImGuiWindowFlags_NoResize;
+	}
+	if (!titleBarViz)
+		window_flags |= ImGuiWindowFlags_NoTitleBar;
+
+	ImGui::End();
+
+	colorTint = XMFLOAT4(tempTint[0], tempTint[1], tempTint[2], tempTint[3]);
+	offset = XMFLOAT4(tempOffset[0], tempOffset[1], tempOffset[2], 0.0f);
 }
 
 // --------------------------------------------------------
@@ -273,18 +427,20 @@ void Game::UIUpdate() {
 // --------------------------------------------------------
 void Game::OnResize()
 {
+
 }
 
 
 // --------------------------------------------------------
 // Update your game here - user input, move objects, AI, etc.
 // --------------------------------------------------------
+
+
 void Game::Update(float deltaTime, float totalTime)
 {
 	//ui
 	UIInfo(deltaTime);
-	//UIUpdate();
-	
+	UIUpdate(deltaTime);
 
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
@@ -302,11 +458,52 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+		//const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	color);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
+	/*
+	XMMATRIX rotZMat = XMMatrixRotationZ(totalTime);
+	XMMATRIX trMat = XMMatrixTranslation(sin(totalTime), 0, 0);
+
+	XMFLOAT4X4 tr;
+	XMFLOAT4X4 rotZ;
+	XMStoreFloat4x4(&tr, trMat);
+	XMStoreFloat4x4(&rotZ, rotZMat);
+	*/
+
+	//collect the data locally
+	VertexShaderData dataToCopy{};
+	dataToCopy.colorTint = colorTint;
+	dataToCopy.offset = offset;
+
+	D3D11_MAPPED_SUBRESOURCE mapped{};
+	Graphics::Context->Map(
+		constantBuffer.Get(),
+		0,
+		D3D11_MAP_WRITE_DISCARD,
+		0,
+		&mapped
+	);
+
+	unsigned int size = sizeof(VertexShaderData);
+	size = ((size + 15) / 16) * 16;
+
+	memcpy(mapped.pData, &dataToCopy, size);
+
+	Graphics::Context->Unmap(constantBuffer.Get(), 0);
+
+	Graphics::Context->VSSetConstantBuffers(
+		0, // Which slot (register) to bind the buffer to?
+		1, // How many are we setting right now?
+		constantBuffer.GetAddressOf()); // Array of buffers (or address of just one)
+
+	for (unsigned int i = 0; i < i_meshCount; i++) { 
+		apmesh_meshes[i]->Draw();
+	}
+
+	/*
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
 	// - Other Direct3D calls will also be necessary to do more complex things
@@ -332,6 +529,7 @@ void Game::Draw(float deltaTime, float totalTime)
 			0,     // Offset to the first index we want to use
 			0);    // Offset to add to each index when looking up vertices
 	}
+	*/
 	 
 	//prepares ImGUI buffers and uses them to draw on screen
 	{

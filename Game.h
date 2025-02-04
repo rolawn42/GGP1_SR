@@ -2,6 +2,22 @@
 
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <memory>
+#include <vector>
+#include <DirectXMath.h>
+
+#include "Mesh.h"
+
+// For the DirectX Math library
+using namespace DirectX;
+
+
+struct VertexShaderData
+{
+	DirectX::XMFLOAT4 colorTint;
+	DirectX::XMFLOAT4 offset;
+	//DirectX::XMFLOAT4X4 transform;
+};
 
 class Game
 {
@@ -25,8 +41,16 @@ private:
 	void CreateGeometry();
 
 	//Update helper methods
+	void UIUpdate(float deltaTime);
 	void UIInfo(float deltaTime);
-	void UIUpdate();
+
+	//Meshes
+	std::vector<std::shared_ptr<Mesh>> apmesh_meshes;
+	unsigned int i_meshCount;
+
+	//Vertex Shader Data
+	DirectX::XMFLOAT4 colorTint;
+	DirectX::XMFLOAT4 offset;
 
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
@@ -36,6 +60,9 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+
+	//Constant Buffer
+	Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
 
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
