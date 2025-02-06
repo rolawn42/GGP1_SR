@@ -7,16 +7,12 @@
 #include <DirectXMath.h>
 
 #include "Mesh.h"
-
-// For the DirectX Math library
-using namespace DirectX;
-
+#include "Transform.h"
 
 struct VertexShaderData
 {
 	DirectX::XMFLOAT4 colorTint;
-	DirectX::XMFLOAT4 offset;
-	//DirectX::XMFLOAT4X4 transform;
+	DirectX::XMFLOAT4X4 transform;
 };
 
 class Game
@@ -51,6 +47,8 @@ private:
 	//Vertex Shader Data
 	DirectX::XMFLOAT4 colorTint;
 	DirectX::XMFLOAT4 offset;
+
+	Transform transform;
 
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the

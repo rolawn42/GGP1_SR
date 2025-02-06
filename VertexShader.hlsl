@@ -2,8 +2,7 @@
 cbuffer constantBuffer : register(b0)
 {
     float4 colorTint;
-    float4 offset;
-    //matrix transform;
+    matrix transform;
 	
 }
 
@@ -61,7 +60,7 @@ VertexToPixel main( VertexShaderInput input )
 	//   a perspective projection matrix, which we'll get to in the future).
     //output.screenPosition = mul(float4(input.localPosition, 1.0f) + offset), transform);
 	
-    output.screenPosition = float4(input.localPosition, 1.0f) + offset;
+    output.screenPosition = mul(float4(input.localPosition, 1.0f), transform);
 
 	// Pass the color through 
 	// - The values will be interpolated per-pixel by the rasterizer

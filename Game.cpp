@@ -34,6 +34,9 @@ void Game::Initialize()
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(Window::Handle());
 	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
+
+	transform = Transform();
+
 	// Pick a style (uncomment one of these 3)
 	ImGui::StyleColorsDark();
 	//ImGui::StyleColorsLight();
@@ -445,6 +448,12 @@ void Game::Update(float deltaTime, float totalTime)
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
+
+	transform.SetPosition(sin(totalTime), 0, 0);
+	transform.Rotate(0, 0, deltaTime);
+
+	float s = sin(totalTime * 20) * 0.5f + 1.0f;
+	transform.SetScale(s, s, s);
 }
 
 
@@ -476,7 +485,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	//collect the data locally
 	VertexShaderData dataToCopy{};
 	dataToCopy.colorTint = colorTint;
-	dataToCopy.offset = offset;
+	dataToCopy.transform = transform.GetWorldMatrix();
 
 	D3D11_MAPPED_SUBRESOURCE mapped{};
 	Graphics::Context->Map(
