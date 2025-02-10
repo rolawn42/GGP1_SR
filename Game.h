@@ -8,12 +8,7 @@
 
 #include "Mesh.h"
 #include "Transform.h"
-
-struct VertexShaderData
-{
-	DirectX::XMFLOAT4 colorTint;
-	DirectX::XMFLOAT4X4 transform;
-};
+#include "Entity.h"
 
 class Game
 {
@@ -30,6 +25,10 @@ public:
 	void Draw(float deltaTime, float totalTime);
 	void OnResize();
 
+	//Getters
+	DirectX::XMFLOAT4 GetColorTint();
+	Transform GetTransform();
+
 private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
@@ -43,6 +42,10 @@ private:
 	//Meshes
 	std::vector<std::shared_ptr<Mesh>> apmesh_meshes;
 	unsigned int i_meshCount;
+
+	//Entites
+	std::vector<std::shared_ptr<Entity>> apentity_entities;
+	unsigned int i_entityCount;
 
 	//Vertex Shader Data
 	DirectX::XMFLOAT4 colorTint;

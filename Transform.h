@@ -18,7 +18,7 @@ public:
 	void MoveAbsolute(float x, float y, float z);
 	//void MoveRelative(float x, float y, float z);
 	void Rotate(float p, float y, float z);
-	void Scale(float x, float y, float z);
+	void Scale(float x, float y, float r);
 
 	//Getters
 	DirectX::XMFLOAT3 GetPosition();
@@ -26,7 +26,7 @@ public:
 	DirectX::XMFLOAT3 GetScale();
 
 	DirectX::XMFLOAT4X4 GetWorldMatrix();
-	//DirectX::XMFLOAT4X4 GetWorldInverseTransposeMatrix();
+	DirectX::XMFLOAT4X4 GetWorldInverseTransposeMatrix();
 
 private:
 	DirectX::XMFLOAT3 position;
@@ -37,6 +37,7 @@ private:
 
 	//matrix
 	DirectX::XMFLOAT4X4 worldMatrix;
+	DirectX::XMFLOAT4X4 worldITMatrix; //world inverse transpose matrix
 
 	bool dirty;
 

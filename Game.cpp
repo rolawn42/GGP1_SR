@@ -244,6 +244,8 @@ void Game::CreateGeometry()
 	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices3, indices3, 6, 12));
 	++i_meshCount;
 
+	/*
+
 	Vertex vertices4[] =
 	{
 		{ XMFLOAT3(+0.6f, +0.6f, +0.0f), red },
@@ -258,6 +260,19 @@ void Game::CreateGeometry()
 	apmesh_meshes.push_back(std::make_shared<Mesh>(vertices4, indices4, 5, 6));
 	++i_meshCount;
 
+	*/
+
+	for (unsigned int i = 0; i < i_meshCount; i++) {
+		apentity_entities.push_back(std::make_shared<Entity>(apmesh_meshes[i]));
+		apentity_entities.push_back(std::make_shared<Entity>(apmesh_meshes[i]));
+	}
+
+	i_entityCount = i_meshCount * 2;
+
+	apentity_entities.push_back(std::make_shared<Entity>(apmesh_meshes[2]));
+	++i_entityCount;
+
+#pragma region starter explanation
 	/*
 	// Create a VERTEX BUFFER
 	// - This holds the vertex data of triangles for a single object
@@ -314,6 +329,8 @@ void Game::CreateGeometry()
 	}
 
 	*/
+
+#pragma endregion
 }
 
 void Game::UIInfo(float deltaTime) {
@@ -407,6 +424,38 @@ void Game::UIUpdate(float deltaTime) {
 		}
 	}
 
+	if (ImGui::CollapsingHeader("Entities")) {
+		for (unsigned int i = 0; i < i_entityCount; i++) {
+			std::string s_num = "Entity " + std::to_string(i);
+			if (ImGui::CollapsingHeader(s_num.c_str())) {
+				float tempPosition[3] = 
+					{ apentity_entities[i]->GetTransform()->GetPosition().x,
+					apentity_entities[i]->GetTransform()->GetPosition().y,
+					apentity_entities[i]->GetTransform()->GetPosition().z };
+				float tempRotation[3] = 
+					{ apentity_entities[i]->GetTransform()->GetRotation().x,
+					apentity_entities[i]->GetTransform()->GetRotation().y,
+					apentity_entities[i]->GetTransform()->GetRotation().z };
+				float tempScale[3] = 
+					{ apentity_entities[i]->GetTransform()->GetScale().x,
+					apentity_entities[i]->GetTransform()->GetScale().y,
+					apentity_entities[i]->GetTransform()->GetScale().z };
+
+				std::string s_pos = "Position " + std::to_string(i);
+				std::string s_rot = "Rotation " + std::to_string(i);
+				std::string s_scl = "Scale " + std::to_string(i);
+
+				ImGui::DragFloat3(s_pos.c_str(), &tempPosition[0], 0.05f, -1.5f, 1.5f);
+				ImGui::DragFloat3(s_rot.c_str(), &tempRotation[0], 0.05f, -1.5f, 1.5f);
+				ImGui::DragFloat3(s_scl.c_str(), &tempScale[0], 0.05f, -1.5f, 1.5f);
+
+				apentity_entities[i]->GetTransform()->SetPosition(tempPosition[0], tempPosition[1], tempPosition[2]);
+				apentity_entities[i]->GetTransform()->SetRotation(tempRotation[0], tempRotation[1], tempRotation[2]);
+				apentity_entities[i]->GetTransform()->SetScale(tempScale[0], tempScale[1], tempScale[2]);
+			}
+		}
+	}
+
 	if (demoVisibility)
 		ImGui::ShowDemoWindow();
 	if (styleEditor)
@@ -420,8 +469,8 @@ void Game::UIUpdate(float deltaTime) {
 
 	ImGui::End();
 
-	colorTint = XMFLOAT4(tempTint[0], tempTint[1], tempTint[2], tempTint[3]);
-	offset = XMFLOAT4(tempOffset[0], tempOffset[1], tempOffset[2], 0.0f);
+	//colorTint = XMFLOAT4(tempTint[0], tempTint[1], tempTint[2], tempTint[3]);
+	//offset = XMFLOAT4(tempOffset[0], tempOffset[1], tempOffset[2], 0.0f);
 }
 
 // --------------------------------------------------------
@@ -449,11 +498,16 @@ void Game::Update(float deltaTime, float totalTime)
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
 
+
 	transform.SetPosition(sin(totalTime), 0, 0);
 	transform.Rotate(0, 0, deltaTime);
 
 	float s = sin(totalTime * 20) * 0.5f + 1.0f;
 	transform.SetScale(s, s, s);
+
+	apentity_entities[0]->GetTransform()->SetPosition(transform.GetPosition().x, transform.GetPosition().y, transform.GetPosition().z);
+	apentity_entities[0]->GetTransform()->SetRotation(transform.GetRotation().x, transform.GetRotation().y, transform.GetRotation().z);
+	apentity_entities[0]->GetTransform()->SetScale(transform.GetScale().x, transform.GetScale().y, transform.GetScale().z);
 }
 
 
@@ -472,6 +526,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
+#pragma region old constant buffer code
+
 	/*
 	XMMATRIX rotZMat = XMMatrixRotationZ(totalTime);
 	XMMATRIX trMat = XMMatrixTranslation(sin(totalTime), 0, 0);
@@ -482,6 +538,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	XMStoreFloat4x4(&rotZ, rotZMat);
 	*/
 
+	/*
 	//collect the data locally
 	VertexShaderData dataToCopy{};
 	dataToCopy.colorTint = colorTint;
@@ -507,11 +564,15 @@ void Game::Draw(float deltaTime, float totalTime)
 		0, // Which slot (register) to bind the buffer to?
 		1, // How many are we setting right now?
 		constantBuffer.GetAddressOf()); // Array of buffers (or address of just one)
+	*/
 
-	for (unsigned int i = 0; i < i_meshCount; i++) { 
-		apmesh_meshes[i]->Draw();
+#pragma endregion
+
+	for (unsigned int i = 0; i < i_entityCount; i++) { 
+		apentity_entities[i]->Draw();
 	}
 
+#pragma region create geo explanation
 	/*
 	// DRAW geometry
 	// - These steps are generally repeated for EACH object you draw
@@ -539,6 +600,8 @@ void Game::Draw(float deltaTime, float totalTime)
 			0);    // Offset to add to each index when looking up vertices
 	}
 	*/
+
+#pragma endregion
 	 
 	//prepares ImGUI buffers and uses them to draw on screen
 	{
