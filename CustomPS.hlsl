@@ -35,6 +35,14 @@ float4 main(VertexToPixel input) : SV_TARGET
 	// - This color (like most values passing through the rasterizer) is 
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
-	//return colorTint;
-    return colorTint;
+	
+	//I'm trying to create a simple black and red checkered pattern.
+    
+	//forces sine output to a 0 - 1 mask on xy by scaling from 1 - -1 to .5 - -.5 the results of the sine on the uv
+	float2 mask = ceil(sin(input.uv * 10.0f) / 2.0f);
+	//for the XY values lerps a color with the previously defined mask value
+	
+	//CHANGED: I wasn't quite doing the math right on this before, I used the lerped mask values 
+	//incorrectly by not combining them to make the 'one true mask' as it were
+    return float4((lerp(1.0f, 0.0f, mask.x) + lerp(1.0f, 0.0f, mask.y)) % 2.0f, 0.0f, 0.0f, 0.0f);
 }

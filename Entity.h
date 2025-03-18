@@ -9,32 +9,25 @@
 //Program
 #include "Transform.h"
 #include "Mesh.h"
+#include "Material.h"
 #include "Graphics.h"
-
-struct VertexShaderData
-{
-	DirectX::XMFLOAT4 colorTint;
-	DirectX::XMFLOAT4X4 transform;
-};
+#include "Camera.h"
 
 class Entity
 {
 public:
-	Entity(std::shared_ptr<Mesh> provided);
+	Entity(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> mat, std::shared_ptr<Transform> transform);
 	~Entity();
-	void Draw();
+	void Draw(std::shared_ptr<Camera> provided);
 
 	std::shared_ptr<Mesh> GetMesh();
+	std::shared_ptr<Material> GetMaterial();
 	std::shared_ptr<Transform> GetTransform();
-private:
-	void CreateConstantBuffer();
 
+	void SetMaterial(std::shared_ptr<Material> mat);
+private:
 	std::shared_ptr<Transform> transform;
 	std::shared_ptr<Mesh> mesh;
-
-	DirectX::XMFLOAT4 colorTint;
-
-	//Constant Buffer
-	Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
+	std::shared_ptr<Material> material;
 };
 

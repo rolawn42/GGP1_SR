@@ -5,6 +5,9 @@
 #include <memory>
 #include <vector>
 #include <DirectXMath.h>
+#include "Camera.h"
+#include "SimpleShader.h"
+#include "Material.h"
 
 #include "Mesh.h"
 #include "Transform.h"
@@ -32,20 +35,21 @@ public:
 private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
-	void LoadShaders();
 	void CreateGeometry();
 
 	//Update helper methods
 	void UIUpdate(float deltaTime);
 	void UIInfo(float deltaTime);
+	
+	//Camera
+	std::shared_ptr<Camera> currentCamera;
+	std::vector<std::shared_ptr<Camera>> cameras;
 
 	//Meshes
-	std::vector<std::shared_ptr<Mesh>> apmesh_meshes;
-	unsigned int i_meshCount;
+	std::vector<std::shared_ptr<Mesh>> meshes;
 
 	//Entites
-	std::vector<std::shared_ptr<Entity>> apentity_entities;
-	unsigned int i_entityCount;
+	std::vector<std::shared_ptr<Entity>> entities;
 
 	//Vertex Shader Data
 	DirectX::XMFLOAT4 colorTint;
@@ -62,12 +66,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
 
-	//Constant Buffer
-	Microsoft::WRL::ComPtr<ID3D11Buffer> constantBuffer;
-
-	// Shaders and shader-related constructs
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
-	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+	std::vector<std::shared_ptr<Material>> materials;
+	std::vector<std::shared_ptr<SimpleVertexShader>> vss;
+	std::vector<std::shared_ptr<SimplePixelShader>> pss;
 };
 

@@ -36,5 +36,5 @@ float4 main(VertexToPixel input) : SV_TARGET
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
 	//return colorTint;
-    return colorTint;
+    return float4(input.normal, 1);
 }

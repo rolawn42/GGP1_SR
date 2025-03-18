@@ -3,14 +3,25 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+//C++
+#include <vector>
+#include <fstream>
+#include <stdexcept>
+
+//Program
 #include "Vertex.h"
+#include "Graphics.h"
+
+//DirectX
+#include <DirectXMath.h>
 
 class Mesh
 {
 public:
-	Mesh(Vertex vertices[], unsigned int indices[], unsigned int vertexCount, unsigned int indexCount);
+	Mesh(std::vector<Vertex> vertices, std::vector<UINT> indices);
+	Mesh(const char* objFile);
+	void CreateBuffers();
 	~Mesh();
-
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> GetVertexBuffer();
 	Microsoft::WRL::ComPtr<ID3D11Buffer> GetIndexBuffer();
@@ -21,7 +32,11 @@ public:
 private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> comptr_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> comptr_indexBuffer;
-	unsigned int i_indexCount;
-	unsigned int i_vertexCount;
+
+	std::vector<DirectX::XMFLOAT3> positions;	// Positions from the file
+	std::vector<DirectX::XMFLOAT3> normals;		// Normals from the file
+	std::vector<DirectX::XMFLOAT2> uvs;		// UVs from the file
+	std::vector<Vertex> verts;		// Verts we're assembling
+	std::vector<UINT> indices;
 };
 

@@ -1,36 +1,32 @@
 #include "Entity.h"
 
-Entity::Entity(std::shared_ptr<Mesh> provided) : 
-	transform(std::make_shared<Transform>())
-{
-	mesh = provided;
-
-	colorTint = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-
-	CreateConstantBuffer();
-}
+Entity::Entity(std::shared_ptr<Mesh> mesh, std::shared_ptr<Material> mat, std::shared_ptr<Transform> transform) :
+	transform(transform),
+	mesh(mesh),
+	material(mat)
+{   }
 
 Entity::~Entity()
 {
 }
 
-void Entity::Draw()
+void Entity::Draw(std::shared_ptr<Camera> camera)
 {
-	//1 bind the constant buffer resource for the vertex shader stage
-	//2 collect the *current* entitiess data in a c++ struct (needs to now hold the world matrix of your entity)
-	//3 map / memcpy / unmap the constant buffer resource
-	//4 set the correct vertex and index buffers
-	//5 tell direct 3d to render using the currently bould resources
-
 	//this must be done for each entity!
 
+	material->PrepareMaterial(transform, camera);
 	mesh->Draw();
 
+	/*
 	//collect the data locally
 	VertexShaderData dataToCopy{};
-	dataToCopy.colorTint = colorTint;
+	dataToCopy.colorTint = material->GetColorTint();
 	dataToCopy.transform = transform->GetWorldMatrix();
+	dataToCopy.view = provided->GetView();
+	dataToCopy.proj = provided->GetProjection();
+	*/
 
+	/*
 	D3D11_MAPPED_SUBRESOURCE mapped{};
 	Graphics::Context->Map(
 		constantBuffer.Get(),
@@ -40,17 +36,17 @@ void Entity::Draw()
 		&mapped
 	);
 
-	unsigned int size = sizeof(VertexShaderData);
-	size = ((size + 15) / 16) * 16;
-
-	memcpy(mapped.pData, &dataToCopy, size);
+	memcpy(mapped.pData, &dataToCopy, sizeof(VertexShaderData));
 
 	Graphics::Context->Unmap(constantBuffer.Get(), 0);
+	*/
 
+	/*
 	Graphics::Context->VSSetConstantBuffers(
 		0, // Which slot (register) to bind the buffer to?
 		1, // How many are we setting right now?
 		constantBuffer.GetAddressOf()); // Array of buffers (or address of just one)
+	*/
 }
 
 std::shared_ptr<Mesh> Entity::GetMesh()
@@ -58,23 +54,17 @@ std::shared_ptr<Mesh> Entity::GetMesh()
 	return mesh;
 }
 
+std::shared_ptr<Material> Entity::GetMaterial()
+{
+	return material;
+}
+
 std::shared_ptr<Transform> Entity::GetTransform()
 {
 	return transform;
 }
 
-void Entity::CreateConstantBuffer()
+void Entity::SetMaterial(std::shared_ptr<Material> mat)
 {
-	//create constant buffer
-	D3D11_BUFFER_DESC cbDesc{};
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.ByteWidth = 32;
-	cbDesc.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-	cbDesc.Usage = D3D11_USAGE_DYNAMIC;
-	cbDesc.MiscFlags = 0;
-	cbDesc.StructureByteStride = 0;
-
-	Graphics::Device->CreateBuffer(&cbDesc, 0, constantBuffer.GetAddressOf());
-
-	Graphics::Context->VSSetConstantBuffers(0, 1, constantBuffer.GetAddressOf());
+	material = mat;
 }
