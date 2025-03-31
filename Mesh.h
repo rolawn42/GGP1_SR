@@ -18,20 +18,28 @@
 class Mesh
 {
 public:
-	Mesh(std::vector<Vertex> vertices, std::vector<UINT> indices);
-	Mesh(const char* objFile);
+	Mesh(const char* name, std::vector<Vertex> vertices, std::vector<UINT> indices);
+	Mesh(const char* name, const char* objFile);
+
 	void CreateBuffers();
+	void CalculateTangents();
+
 	~Mesh();
 
-	Microsoft::WRL::ComPtr<ID3D11Buffer> GetVertexBuffer();
-	Microsoft::WRL::ComPtr<ID3D11Buffer> GetIndexBuffer();
+	//Getters
+	//Microsoft::WRL::ComPtr<ID3D11Buffer> GetVertexBuffer();
+	//Microsoft::WRL::ComPtr<ID3D11Buffer> GetIndexBuffer();
 	unsigned int GetIndexCount();
 	unsigned int GetVertexCount();
+	const char* GetName();
+
 	void Draw();
 
 private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> comptr_vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> comptr_indexBuffer;
+
+	const char* name;
 
 	std::vector<DirectX::XMFLOAT3> positions;	// Positions from the file
 	std::vector<DirectX::XMFLOAT3> normals;		// Normals from the file

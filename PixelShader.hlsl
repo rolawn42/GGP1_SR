@@ -1,24 +1,23 @@
+#include "ShaderIncludes.hlsli"
+
 cbuffer psConstantBuffer : register(b0)
 {
     float4 colorTint;
+    float2 uvScale;
+    float2 uvOffset;
+    float3 cameraPosition;
+    float roughness;
+    float3 ambient;
+    
+    Light lights[MAX_LIGHTS];
+    int lightCount;
+    
 }
 
-// Struct representing the data we expect to receive from earlier pipeline stages
-// - Should match the output of our corresponding vertex shader
-// - The name of the struct itself is unimportant
-// - The variable names don't have to match other shaders (just the semantics)
-// - Each variable must have a semantic, which defines its usage
-struct VertexToPixel
-{
-	// Data type
-	//  |
-	//  |   Name          Semantic
-	//  |    |                |
-	//  v    v                v
-	float4 screenPosition	: SV_POSITION;
-    float2 uv				: TEXCOORD; // UV texture coordinates
-    float3 normal			: NORMAL; // RGB normal map
-};
+Texture2D SurfaceTexture : register(t0); // "t" registers for textures
+Texture2D NormalMap : register(t1); // "t" registers for textures
+SamplerState BasicSampler : register(s0); // "s" registers for samplers
+
 
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
@@ -31,10 +30,39 @@ struct VertexToPixel
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-	// Just return the input color
-	// - This color (like most values passing through the rasterizer) is 
-	//   interpolated for each pixel between the corresponding vertices 
-	//   of the triangle we're rendering
-	//return colorTint;
-    return colorTint;
+    //apply UV alterations
+    input.uv = input.uv * uvScale + uvOffset;
+    
+    //normalize the input normals and tangent
+    input.normal = normalize(input.normal);
+    input.tangent = normalize(input.tangent);
+    
+    //Gram-Schmidt orthonormalize
+    input.tangent = normalize(input.tangent - input.normal * dot(input.tangent, input.normal));
+    float3 bitangent = cross(input.tangent, input.normal);
+    float3x3 TBNRotationMatrix = float3x3(input.tangent, bitangent, input.normal);
+    
+     //unpack and normalize the normal map
+    float3 unpackedNormal = normalize(NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1);
+    
+    //transform the unpacked normal by the TBN matrix
+    input.normal = mul(unpackedNormal, TBNRotationMatrix);
+    
+    //unpack the base color and adjust it by a color tint
+    float3 surfaceColor =  colorTint.rgb * SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+    
+    //create our initial 'total light' by combining our surface color and ambient color / lighting
+    float3 totalLight = surfaceColor * ambient;
+    
+    for (int i = 0; i < lightCount; i++)
+    {
+        Light light = lights[i];
+        
+        //normalize the light direction
+        light.direction = normalize(light.direction);
+        
+        totalLight += CreateLight(light, input.normal, input.worldPosition, cameraPosition, roughness, surfaceColor);
+    }
+    
+    return float4(totalLight, 1);
 }

@@ -1,17 +1,33 @@
 #pragma once
 
-#include <d3d11.h>
-#include <wrl/client.h>
+//C++
 #include <memory>
 #include <vector>
-#include <DirectXMath.h>
+#include "vector"
+#include "deque"
+
+//Program
 #include "Camera.h"
 #include "SimpleShader.h"
 #include "Material.h"
-
 #include "Mesh.h"
 #include "Transform.h"
 #include "Entity.h"
+#include "Graphics.h"
+#include "Vertex.h"
+#include "Input.h"
+#include "PathHelpers.h"
+#include "Window.h"
+#include "Lights.h"
+#include "Sky.h"
+
+//DirectX
+#include <d3d11.h>
+#include <wrl/client.h>
+#include <DirectXMath.h>
+
+//Toolkit
+#include "WICTextureLoader.h"
 
 class Game
 {
@@ -35,7 +51,22 @@ public:
 private:
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
+	void CreateLighting();
 	void CreateGeometry();
+
+	//Directional Light
+	void CreateDirectional(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction);
+
+	//Point Light
+	void CreatePoint(float intensity, DirectX::XMFLOAT3 color, float range, DirectX::XMFLOAT3 position);
+
+	//SpotLight
+	void CreateSpot(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle);
+
+	//ALL
+	void CreateLight(int type, float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle);
+
+	const char* LightType(int num);
 
 	//Update helper methods
 	void UIUpdate(float deltaTime);
@@ -48,7 +79,7 @@ private:
 	//Meshes
 	std::vector<std::shared_ptr<Mesh>> meshes;
 
-	//Entites
+	//Entities
 	std::vector<std::shared_ptr<Entity>> entities;
 
 	//Vertex Shader Data
@@ -65,9 +96,17 @@ private:
 	// Buffers to hold actual geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
 	Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> samplerState;
+
 
 	std::vector<std::shared_ptr<Material>> materials;
 	std::vector<std::shared_ptr<SimpleVertexShader>> vss;
 	std::vector<std::shared_ptr<SimplePixelShader>> pss;
+
+	//lighting
+	DirectX::XMFLOAT3 ambientColor;
+	std::vector<Light> lights;
+
+	std::shared_ptr<Sky> sky;
 };
 

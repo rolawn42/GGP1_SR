@@ -1,23 +1,17 @@
 #include "Game.h"
-#include "Graphics.h"
-#include "Mesh.h"
-
-#include "Vertex.h"
-#include "Input.h"
-#include "PathHelpers.h"
-#include "Window.h"
-
-#include "vector"
-#include "deque"
 
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
 #include <d3dcompiler.h>
 
-//ImGui includes
+//ImGui
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
 #include "ImGui/imgui_impl_win32.h"
+
+//Macros
+#define FIXPATH(x) FixPath(x).c_str()
+#define UISTEP 0.05f
 
 // For the DirectX Math library
 using namespace DirectX;
@@ -40,21 +34,22 @@ void Game::Initialize()
 	// ImGui style
 	ImGui::StyleColorsDark();
 
+	//CAMERA
+
 	for (unsigned int i = 0; i < 2; i++) {
 		cameras.push_back(std::make_shared<Camera>(
-			//CHANGED: here I moved the camera farther back, in Camera.cpp I implemented the position
-			//value in the constructor, which I had forgotten to do previously (also I increased move speed)
 			XMFLOAT3(0, 0, -15), 4.0f, 0.005f, XM_PIDIV4, Window::AspectRatio()));
 	}
 
 	currentCamera = cameras[0];
-	
-	// Helper methods for loading shaders, creating some basic
-	// geometry to draw and some simple camera matrices.
-	//  - You'll be expanding and/or replacing these later
+
+	//Generates light sources (directional, point, spot) and sets the ambient color
+	CreateLighting();
+
+	//Creates meshes, materials, and entities
 	CreateGeometry();
 
-	Graphics::Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST); //CHANGED: this line was added (as you know)
+	Graphics::Context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
 
@@ -72,36 +67,119 @@ Game::~Game()
 }
 
 
+void Game::CreateLighting()
+{
+	ambientColor = DirectX::XMFLOAT3(0.25f, 0.25f, 0.25f);
+
+	CreateDirectional(1.0f, XMFLOAT3(1, 0, 0), XMFLOAT3(1, 0, 0));
+	CreatePoint(1.0f, XMFLOAT3(0, 0, 0), 6.0f, XMFLOAT3(-6.0f, 0.0f, 0.0f));
+	CreatePoint(1.0f, XMFLOAT3(0, 0, 1), 6.0f, XMFLOAT3(-3.0f, 0.0f, 0.0f));
+	CreatePoint(1.0f, XMFLOAT3(1, 0, 0), 6.0f, XMFLOAT3(0.0f, 0.0f, 0.0f));
+	CreatePoint(1.0f, XMFLOAT3(1, 0, 0), 6.0f, XMFLOAT3(3.0f, 0.0f, 0.0f));
+	CreateSpot(1.0f, XMFLOAT3(1, 0, 0), XMFLOAT3(0, -1, 0), 6.0f, XMFLOAT3(7.5f, 2.5f, 0.0f), XMConvertToRadians(10.0f), XMConvertToRadians(15.0f));
+}
+
 // --------------------------------------------------------
 // Creates the geometry we're going to draw
 // --------------------------------------------------------
+/*
+inline void MakeSRV(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv, const wchar_t* texFile) {
+	DirectX::CreateWICTextureFromFile(
+		Graphics::Device.Get(),
+		Graphics::Context.Get(),
+		texFile,
+		0,
+		srv.GetAddressOf());
+}
+*/
+
 void Game::CreateGeometry()
 {
-	//CHANGED: replaced the 'quad' (one sided) with the torus
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/cube.obj").c_str()));
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/cylinder.obj").c_str()));
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/helix.obj").c_str()));
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/sphere.obj").c_str()));
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/torus.obj").c_str()));
-	meshes.push_back(std::make_shared<Mesh>(FixPath("../../Assets/Models/quad_double_sided.obj").c_str()));
 
-	vss.push_back(std::make_shared<SimpleVertexShader>(Graphics::Device, Graphics::Context, FixPath(L"VertexShader.cso").c_str()));
+	//CREATE SAMPLER STATE
+	D3D11_SAMPLER_DESC sampDesc = {};
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP; // What happens outside the 0-1 uv range?
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.Filter = D3D11_FILTER_ANISOTROPIC;		// How do we handle sampling "between" pixels?
+	sampDesc.MaxAnisotropy = 16;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
-	//CHANGED: these were all named wrong (I changed the names in the explorer and forgot to rename them here
-	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FixPath(L"PixelShader.cso").c_str()));
-	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FixPath(L"DebugUVsPS.cso").c_str()));
-	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FixPath(L"DebugNormalsPS.cso").c_str()));
-	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FixPath(L"CustomPS.cso").c_str()));
+	Graphics::Device->CreateSamplerState(&sampDesc, samplerState.GetAddressOf());
 
-	//materials.push_back(std::make_shared<Material>(XMFLOAT4(1, 0, 0, 0), vss[0], pss[0]));
-	//materials.push_back(std::make_shared<Material>(XMFLOAT4(0, 1, 0, 0), vss[0], pss[0]));
-	//materials.push_back(std::make_shared<Material>(XMFLOAT4(0, 0, 1, 0), vss[0], pss[0]));
+	//CREATE MESHES
 
-	//CHANGED: all the below are changed just for organizing the meshes in scene
-	materials.push_back(std::make_shared<Material>(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), vss[0], pss[0]));
-	materials.push_back(std::make_shared<Material>(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), vss[0], pss[1]));
-	materials.push_back(std::make_shared<Material>(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), vss[0], pss[2]));
-	materials.push_back(std::make_shared<Material>(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f), vss[0], pss[3]));
+	meshes.push_back(std::make_shared<Mesh>("Cube", FIXPATH("../../Assets/Models/cube.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Cylinder", FIXPATH("../../Assets/Models/cylinder.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Helix", FIXPATH("../../Assets/Models/helix.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Sphere", FIXPATH("../../Assets/Models/sphere.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Torus", FIXPATH("../../Assets/Models/torus.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Quad_Double", FIXPATH("../../Assets/Models/quad_double_sided.obj")));
+	meshes.push_back(std::make_shared<Mesh>("Quad", FIXPATH("../../Assets/Models/quad.obj")));
+
+	//CREATE SHADERS
+
+	vss.push_back(std::make_shared<SimpleVertexShader>(Graphics::Device, Graphics::Context, FIXPATH(L"VertexShader.cso")));
+	vss.push_back(std::make_shared<SimpleVertexShader>(Graphics::Device, Graphics::Context, FIXPATH(L"VertexShader_Sky.cso")));
+
+	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FIXPATH(L"PixelShader.cso")));
+	pss.push_back(std::make_shared<SimplePixelShader>(Graphics::Device, Graphics::Context, FIXPATH(L"PixelShader_Sky.cso")));
+
+	//CREATE SKYBOX
+	#define MAKESRV(srv, texFile) DirectX::CreateWICTextureFromFile(Graphics::Device.Get(), Graphics::Context.Get(), texFile, 0, srv.GetAddressOf());
+	
+	sky = std::make_shared<Sky>(samplerState, meshes[0]);
+
+	//create SRV
+	sky->CreateCubemap(
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"),
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"),
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"),
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"),
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"),
+		FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"));
+
+	//setShaders
+	sky->SetVertexShader(vss[1]);
+	sky->SetPixelShader(pss[1]);
+	
+	//CREATE SRVS (essentially TEXTURES)
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> denimBCSRV;
+	MAKESRV(denimBCSRV, FIXPATH(L"../../Assets/Textures/Denim/Denim_BC.png"));
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> brickBCSRV;
+	MAKESRV(brickBCSRV, FIXPATH(L"../../Assets/Textures/MixedBrick/MixedBrick_BC.png"));
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> denimNSRV;
+	MAKESRV(denimNSRV, FIXPATH(L"../../Assets/Textures/Decal/Decal_N.png"));
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> brickNSRV;
+	MAKESRV(brickNSRV, FIXPATH(L"../../Assets/Textures/MixedBrick/MixedBrick_N.png"));
+
+	//CREATE MATERIALS
+
+	materials.push_back(std::make_shared<Material>("Denim Normal", XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vss[0], pss[0]));
+	materials[0]->AddTextureSRV("SurfaceTexture", denimBCSRV);
+	materials[0]->AddTextureSRV("NormalMap", denimNSRV);
+	materials[0]->AddSampler("BasicSampler", samplerState);
+
+	materials.push_back(std::make_shared<Material>("Denim Brown", XMFLOAT4(0.8f, 0.5f, 0.0f, 1.0f), vss[0], pss[0], 0.0f));
+	materials[1]->AddTextureSRV("SurfaceTexture", denimBCSRV);
+	materials[1]->AddTextureSRV("NormalMap", denimNSRV);
+	materials[1]->AddSampler("BasicSampler", samplerState);
+
+	materials.push_back(std::make_shared<Material>("Bricks Normal", XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vss[0], pss[0], 1.0f));
+	materials[2]->AddTextureSRV("SurfaceTexture", brickBCSRV);
+	materials[2]->AddTextureSRV("NormalMap", brickNSRV);
+	materials[2]->AddSampler("BasicSampler", samplerState);
+
+	materials.push_back(std::make_shared<Material>("Bricks Small", XMFLOAT4(0.3f, 0.6f, 0.2f, 1.0f), vss[0], pss[0]));
+	materials[3]->AddTextureSRV("SurfaceTexture", brickBCSRV);
+	materials[3]->AddTextureSRV("NormalMap", brickNSRV);
+	materials[3]->AddSampler("BasicSampler", samplerState);
+
+	//CREATE ENTITIES
 
 	entities.push_back(std::make_shared<Entity>(meshes[0], materials[0], std::make_shared<Transform>(-7.5f, +2.0f, 0.0f)));
 	entities.push_back(std::make_shared<Entity>(meshes[1], materials[1], std::make_shared<Transform>(-4.5f, +2.0f, 0.0f)));
@@ -114,7 +192,7 @@ void Game::CreateGeometry()
 	entities.push_back(std::make_shared<Entity>(meshes[1], materials[3], std::make_shared<Transform>(-4.5f, -2.0f, 0.0f)));
 	entities.push_back(std::make_shared<Entity>(meshes[2], materials[2], std::make_shared<Transform>(-1.5f, -2.0f, 0.0f)));
 	entities.push_back(std::make_shared<Entity>(meshes[3], materials[3], std::make_shared<Transform>(+1.5f, -2.0f, 0.0f)));
-	entities.push_back(std::make_shared<Entity>(meshes[4], materials[2], std::make_shared<Transform>(+4.5f, -2.0f, 0.0f)));
+	entities.push_back(std::make_shared<Entity>(meshes[6], materials[2], std::make_shared<Transform>(+4.5f, -2.0f, 0.0f)));
 	entities.push_back(std::make_shared<Entity>(meshes[5], materials[3], std::make_shared<Transform>(+7.5f, -2.0f, 0.0f)));
 }
 
@@ -143,7 +221,7 @@ namespace {
 	bool titleBarViz = true;
 	bool windowLock = false;
 	bool styleEditor = false;
-	float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+	float color[4] = { 0.05f, 0.05f, 0.05f, 0.0f };
 
 	int queueSize = 60;
 	float graphInterval = 0.1f; //how long until the graph gets a new value
@@ -154,7 +232,6 @@ namespace {
 
 	std::deque<float> af_framerate(queueSize, 0);
 	std::deque<float> af_frametime(queueSize, 0);
-
 }
 
 ImGuiWindowFlags next_flags = 0;
@@ -194,74 +271,103 @@ void Game::UIUpdate(float deltaTime) {
 		ImGui::Checkbox("Lock Window", &windowLock);
 		ImGui::Checkbox("Style Editor", &styleEditor);
 
-		ImGui::DragFloat3("Position Offset", &tempOffset[0], 0.05f, -1.5f, 1.5f);
-		ImGui::ColorEdit4("Color Tint", &tempTint[0]);
-
-		//ImGui::ColorEdit4("RGBA color editor", &text[0]);
-		//ImGui::ColorEdit4("RGBA color editor", &winbg[0]);
-
 		next_flags = window_flags;
 	}
 
 	if (ImGui::CollapsingHeader("Camera")) {
 		for (unsigned int i = 0; i < cameras.size(); i++) {
-			std::string s_num = "Camera " + std::to_string(i);
-			if (ImGui::CollapsingHeader(s_num.c_str())) {
+			ImGui::PushID(cameras[i].get());
+			std::string camName = "Camera " + std::to_string(i);
+			if (ImGui::CollapsingHeader(camName.c_str())) {
 				ImGui::Text("Current?: %s", cameras[i] == currentCamera ? "yes" : "no");
-				std::string s_num = "Make Current " + std::to_string(i);
-				if (ImGui::Button(s_num.c_str())) {
+				
+				if (ImGui::Button("Make Current?")) {
 					currentCamera = cameras[i];
 				}
-				//CHANGED: I think this would have been part of A6, but either way I incorrectly wrote the code for writing out the camera 
-				//position and rotation, I used %d and did not split the position to XYZ (like cameras[i]->GT()->GP()), I used it this time to debug
-				ImGui::Text("Postion: X: %f Y: %f Z: %f", 
-					(cameras[i]->GetTransform()->GetPosition().x), 
-					(cameras[i]->GetTransform()->GetPosition().y), 
-					(cameras[i]->GetTransform()->GetPosition().z));
-				ImGui::Text("Rotation: P: %f Y: %f R: %f", 
-					(cameras[i]->GetTransform()->GetRotation().x),
-					(cameras[i]->GetTransform()->GetRotation().y),
-					(cameras[i]->GetTransform()->GetRotation().z));
+
+				std::shared_ptr<Transform> transform = cameras[i]->GetTransform();
+
+				XMFLOAT3 tempPos = transform->GetPosition();
+				XMFLOAT3 tempRot = transform->GetRotation();
+
+				if (ImGui::DragFloat3("Position", &tempPos.x, UISTEP)) { transform->SetPosition(tempPos); }
+				if (ImGui::DragFloat3("Rotation", &tempRot.x, UISTEP)) { transform->SetRotation(tempRot); }
 			}
+			ImGui::PopID();
+		}
+	}
+
+	if (ImGui::CollapsingHeader("Lights")) {
+		for (unsigned int i = 0; i < lights.size(); i++) {
+			ImGui::PushID(i);
+			if (ImGui::CollapsingHeader(LightType(lights[i].type))) {
+				ImGui::DragFloat("Intensity", &lights[i].intensity, UISTEP);
+				ImGui::ColorEdit3("Color", &lights[i].color.x);
+				if (lights[i].type == LIGHT_TYPE_DIRECTIONAL || lights[i].type == LIGHT_TYPE_SPOT) {
+					ImGui::DragFloat3("Direction", &lights[i].direction.x, UISTEP);
+				}
+				if (lights[i].type == LIGHT_TYPE_POINT || lights[i].type == LIGHT_TYPE_SPOT) {
+					ImGui::DragFloat3("Position", &lights[i].position.x, UISTEP);
+					ImGui::DragFloat("Range", &lights[i].range, UISTEP);
+				}
+				if (lights[i].type == LIGHT_TYPE_SPOT) {
+					float innerTemp = DirectX::XMConvertToDegrees(lights[i].spotInnerAngle);
+					float outerTemp = DirectX::XMConvertToDegrees(lights[i].spotOuterAngle);
+
+					if (ImGui::DragFloat("Inner Cone Angle", &innerTemp, UISTEP)) { lights[i].spotInnerAngle = XMConvertToRadians(innerTemp); }
+					if (ImGui::DragFloat("Outer Cone Angle", &outerTemp, UISTEP)) { lights[i].spotOuterAngle = XMConvertToRadians(outerTemp); }
+				}
+			}
+			ImGui::PopID();
 		}
 	}
 
 	if (ImGui::CollapsingHeader("Entities")) {
 		for (unsigned int i = 0; i < entities.size(); i++) {
-			std::string s_num = "Entity " + std::to_string(i);
-			if (ImGui::CollapsingHeader(s_num.c_str())) {
-				float tempPosition[3] = 
-					{ entities[i]->GetTransform()->GetPosition().x,
-					entities[i]->GetTransform()->GetPosition().y,
-					entities[i]->GetTransform()->GetPosition().z };
-				float tempRotation[3] = 
-					{ entities[i]->GetTransform()->GetRotation().x,
-					entities[i]->GetTransform()->GetRotation().y,
-					entities[i]->GetTransform()->GetRotation().z };
-				float tempScale[3] = 
-					{ entities[i]->GetTransform()->GetScale().x,
-					entities[i]->GetTransform()->GetScale().y,
-					entities[i]->GetTransform()->GetScale().z };
+			ImGui::PushID(entities[i].get());
+			if (ImGui::CollapsingHeader("Entity")) {
+				std::shared_ptr<Transform> transform = entities[i]->GetTransform();
 
-				std::string s_pos = "Position " + std::to_string(i);
-				std::string s_rot = "Rotation " + std::to_string(i);
-				std::string s_scl = "Scale " + std::to_string(i);
+				DirectX::XMFLOAT3 tempPosition = transform->GetPosition();
+				DirectX::XMFLOAT3 tempRotation = transform->GetRotation();
+				DirectX::XMFLOAT3 tempScale = transform->GetScale();
 
-				ImGui::DragFloat3(s_pos.c_str(), &tempPosition[0], 0.05f, -1.5f, 1.5f);
-				ImGui::DragFloat3(s_rot.c_str(), &tempRotation[0], 0.05f, -1.5f, 1.5f);
-				ImGui::DragFloat3(s_scl.c_str(), &tempScale[0], 0.05f, -1.5f, 1.5f);
+				if (ImGui::DragFloat3("Position " + i, &tempPosition.x, UISTEP, -1.5f, 1.5f)) { transform->SetPosition(tempPosition); }
+				if (ImGui::DragFloat3("Rotation " + i, &tempRotation.x, UISTEP, -1.5f, 1.5f)) { transform->SetRotation(tempRotation); }
+				if (ImGui::DragFloat3("Scale " + i, &tempScale.x, UISTEP, -1.5f, 1.5f)) { transform->SetScale(tempScale); }
+			}
+			ImGui::PopID();
+		}
+	}
 
-				entities[i]->GetTransform()->SetPosition(tempPosition[0], tempPosition[1], tempPosition[2]);
-				entities[i]->GetTransform()->SetRotation(tempRotation[0], tempRotation[1], tempRotation[2]);
-				entities[i]->GetTransform()->SetScale(tempScale[0], tempScale[1], tempScale[2]);
+	if (ImGui::CollapsingHeader("Materials")) {
+
+		for (unsigned int i = 0; i < materials.size(); i++) {
+			if (ImGui::CollapsingHeader(materials[i]->GetName())) {
+				ImGui::PushID(materials[i].get());
+				DirectX::XMFLOAT4 tempTint = materials[i]->GetColorTint();
+				DirectX::XMFLOAT2 tempScale = materials[i]->GetUvScale();
+				DirectX::XMFLOAT2 tempOffset = materials[i]->GetUvOffset();
+				float roughness = materials[i]->GetRoughness();
+
+				if(ImGui::DragFloat3("Tint", &tempTint.x, UISTEP)) { materials[i]->SetColorTint(tempTint);  }
+				if(ImGui::DragFloat2("Scale", &tempScale.x, UISTEP)) { materials[i]->SetUvScale(tempScale);  }
+				if(ImGui::DragFloat2("Offset", &tempOffset.x, UISTEP)) { materials[i]->SetUvOffset(tempOffset); }
+				if(ImGui::DragFloat("Roughness", &roughness, UISTEP)) { materials[i]->SetRoughness(roughness); }
+
+				for (auto& [name, ptr] : materials[i]->GetTextureSRVMap()) {
+					ImGui::Text(name.c_str());
+					ImGui::Image((ImTextureID)(intptr_t)ptr.Get(), ImVec2(256, 256));
+				}
+				ImGui::PopID();
 			}
 		}
 	}
 
+
 	if (ImGui::CollapsingHeader("Meshes")) {
 		for (unsigned int i = 0; i < meshes.size(); i++) {
-			std::string s_num = "Mesh " + std::to_string(i);
-			if (ImGui::CollapsingHeader(s_num.c_str())) {
+			if (ImGui::CollapsingHeader(meshes[i]->GetName())) {
 				ImGui::Text("Tris: %d", (meshes[i]->GetIndexCount() / 3));
 				ImGui::Text("Verts: %d", (meshes[i]->GetVertexCount()));
 				ImGui::Text("Indicies: %d", (meshes[i]->GetIndexCount()));
@@ -281,9 +387,6 @@ void Game::UIUpdate(float deltaTime) {
 		window_flags |= ImGuiWindowFlags_NoTitleBar;
 
 	ImGui::End();
-
-	//colorTint = XMFLOAT4(tempTint[0], tempTint[1], tempTint[2], tempTint[3]);
-	//offset = XMFLOAT4(tempOffset[0], tempOffset[1], tempOffset[2], 0.0f);
 }
 
 // --------------------------------------------------------
@@ -294,6 +397,16 @@ void Game::OnResize()
 {
 	if (currentCamera)
 		currentCamera->UpdateProjectionMatrix(Window::AspectRatio());
+}
+
+DirectX::XMFLOAT4 Game::GetColorTint()
+{
+	return colorTint;
+}
+
+Transform Game::GetTransform()
+{
+	return transform;
 }
 
 
@@ -313,12 +426,6 @@ void Game::Update(float deltaTime, float totalTime)
 		Window::Quit();
 
 	currentCamera->Update(deltaTime);
-
-	//transform.SetPosition(sin(static_cast<double>(totalTime)), 0, 0);
-	//transform.Rotate(0, 0, deltaTime);
-
-	//float s = sin(static_cast<double>(totalTime * 20)) * 0.5f + 1.0f;
-	//transform.SetScale(s, s, s);
 }
 
 
@@ -338,8 +445,13 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 
 	for (unsigned int i = 0; i < entities.size(); i++) { 
+		entities[i]->GetMaterial()->GetPixelShader()->SetFloat3("ambient", ambientColor);
+		entities[i]->GetMaterial()->GetPixelShader()->SetInt("lightCount", (int)lights.size());
+		entities[i]->GetMaterial()->GetPixelShader()->SetData("lights", &lights[0], sizeof(Light) * (int)lights.size());
 		entities[i]->Draw(currentCamera);
 	}
+
+	sky->Draw(currentCamera);
 	 
 	//prepares ImGUI buffers and uses them to draw on screen
 	{
@@ -365,5 +477,45 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 }
 
+//LIGHTING HELPERS
 
+void Game::CreateDirectional(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction)
+{
+	CreateLight(0, intensity, color, direction, 0.0f, DirectX::XMFLOAT3(), 0.0f, 0.0f);
+}
+void Game::CreatePoint(float intensity, DirectX::XMFLOAT3 color, float range, DirectX::XMFLOAT3 position)
+{
+	CreateLight(1, intensity, color, DirectX::XMFLOAT3(), range, position, 0.0f, 0.0f);
+}
+void Game::CreateSpot(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle)
+{
+	CreateLight(2, intensity, color, direction, range, position, spotInnerAngle, spotOuterAngle);
+}
+void Game::CreateLight(int type, float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle)
+{
+	Light light = { };
+	light.type = type;
+	light.direction = direction;
+	light.color = color;
+	light.intensity = intensity;
+	light.position = position;
+	light.range = range;
+	light.spotInnerAngle = spotInnerAngle;
+	light.spotOuterAngle = spotOuterAngle;
 
+	lights.push_back(light);
+}
+
+const char* Game::LightType(int num)
+{
+	switch(num) {
+		case 0:
+			return "Directional";
+		case 1:
+			return "Point";
+		case 2:
+			return "Spot";
+		default:
+			return "NULL";
+	}
+}
