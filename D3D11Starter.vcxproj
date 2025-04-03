@@ -175,6 +175,7 @@
     <ClCompile Include="SimpleShader.cpp" />
     <ClCompile Include="Sky.cpp" />
     <ClCompile Include="Transform.cpp" />
+    <ClCompile Include="UI.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -198,6 +199,7 @@
     <ClInclude Include="SimpleShader.h" />
     <ClInclude Include="Sky.h" />
     <ClInclude Include="Transform.h" />
+    <ClInclude Include="UI.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>

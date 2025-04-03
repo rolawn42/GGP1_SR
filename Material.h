@@ -42,6 +42,7 @@ public:
 	const char* GetName();
 
 	void SetColorTint(DirectX::XMFLOAT4 cT);
+	void SetColorTint3(DirectX::XMFLOAT3 cT);
 	void SetVertexShader(std::shared_ptr<SimpleVertexShader> vS);
 	void SetPixelShader(std::shared_ptr<SimplePixelShader> pS);
 	void SetUvScale(DirectX::XMFLOAT2 uvs);

@@ -7,8 +7,8 @@ cbuffer psConstantBuffer : register(b0)
     float2 uvOffset;
     float3 cameraPosition;
     float roughness;
-    float3 ambient;
     
+    float3 ambient;
     Light lights[MAX_LIGHTS];
     int lightCount;
     
@@ -43,26 +43,23 @@ float4 main(VertexToPixel input) : SV_TARGET
     float3x3 TBNRotationMatrix = float3x3(input.tangent, bitangent, input.normal);
     
      //unpack and normalize the normal map
-    float3 unpackedNormal = normalize(NormalMap.Sample(BasicSampler, input.uv).rgb * 2 - 1);
+    float3 unpackedNormal = NormalMap.Sample(BasicSampler, input.uv).rgb * 2.0f - 1.0f;
     
     //transform the unpacked normal by the TBN matrix
-    input.normal = mul(unpackedNormal, TBNRotationMatrix);
+    input.normal = normalize(mul(unpackedNormal, TBNRotationMatrix));
     
     //unpack the base color and adjust it by a color tint
-    float3 surfaceColor =  colorTint.rgb * SurfaceTexture.Sample(BasicSampler, input.uv).rgb;
+    float3 surfaceColor = colorTint.rgb * pow(SurfaceTexture.Sample(BasicSampler, input.uv).rgb, 2.2f);
     
     //create our initial 'total light' by combining our surface color and ambient color / lighting
     float3 totalLight = surfaceColor * ambient;
     
     for (int i = 0; i < lightCount; i++)
     {
-        Light light = lights[i];
-        
-        //normalize the light direction
-        light.direction = normalize(light.direction);
-        
-        totalLight += CreateLight(light, input.normal, input.worldPosition, cameraPosition, roughness, surfaceColor);
+        totalLight += CreateLight(lights[i], input.normal, input.worldPosition, cameraPosition, roughness, surfaceColor);
     }
     
-    return float4(totalLight, 1);
+    return pow(float4(totalLight, 1), 1.0f / 2.2f);
+    
+
 }

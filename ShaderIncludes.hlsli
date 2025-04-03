@@ -83,7 +83,7 @@ float Attenuation(Light light, float3 worldPosition)
     return att * att; //multipling 0-1 values creates the expoential falloff
 }
 
-float3 SpotTerm(Light light, float3 toLightDirection)
+float SpotTerm(Light light, float3 toLightDirection)
 {
 	//angle of the pixel's normal to the center of the light's direction vector
     float pixelAngle = saturate(dot(-toLightDirection, light.direction));
@@ -102,15 +102,17 @@ float3 SpotTerm(Light light, float3 toLightDirection)
 
 float3 CreateLight(Light light, float3 normal, float3 worldPosition, float3 cameraPosition, float roughness, float3 surfaceColor)
 {
-    //get the direction to the light and the camera from the current pixel
-    float3 toLightDirection = normalize(-light.direction);
+    //directional: get the direction to the light and the camera from the current pixel / 
+    //point-spot: get the difference from this pixels position to the lights positions
+    float3 toLightDirection = normalize(lerp(-light.direction, light.position - worldPosition, saturate((float) light.type)));
+    //float3 toLightDirection = light.type == LIGHT_TYPE_DIRECTIONAL ? normalize(-light.direction) : normalize(light.position - worldPosition);
     float3 toCameraDirection = normalize(cameraPosition - worldPosition);
     
     //calculate the difuse by taking the dot of the normal and the to light direction (returns their similarity, clamped to 0-1 by saturate)
     float diffuse = saturate(dot(normal, toLightDirection));
     
     //calculate the specular (first, if roughness is 1.0 the first is 0 (or no reflection)
-    float specular = roughness >= 0.975f ? 0.0f : 
+    float specular = roughness >= 0.975f ? 0.0f :
             pow(max(dot(toCameraDirection, reflect(-toLightDirection, normal)), 0), (1 - roughness) * MAX_SPECULAR_EXPONENT);
             //otherwise, the dot of the refl vector and cam direction determines where the light reflects, max avoids negatives, 
             //and the power creates the sharpness of the reflection (size and brightness))
@@ -124,7 +126,6 @@ float3 CreateLight(Light light, float3 normal, float3 worldPosition, float3 came
     {
         case LIGHT_TYPE_POINT:
             return Attenuation(light, worldPosition) * BASIC_LIGHT;
-
         case LIGHT_TYPE_SPOT:
             return Attenuation(light, worldPosition) * SpotTerm(light, toLightDirection) * BASIC_LIGHT;
         case LIGHT_TYPE_DIRECTIONAL:
@@ -132,6 +133,4 @@ float3 CreateLight(Light light, float3 normal, float3 worldPosition, float3 came
             return BASIC_LIGHT;
     }
 }
-
-
 #endif

@@ -3,7 +3,6 @@
 //C++
 #include <memory>
 #include <vector>
-#include "vector"
 #include "deque"
 
 //Program
@@ -20,6 +19,7 @@
 #include "Window.h"
 #include "Lights.h"
 #include "Sky.h"
+#include "UI.h"
 
 //DirectX
 #include <d3d11.h>
@@ -63,14 +63,8 @@ private:
 	//SpotLight
 	void CreateSpot(float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle);
 
-	//ALL
+	//ALL Lights
 	void CreateLight(int type, float intensity, DirectX::XMFLOAT3 color, DirectX::XMFLOAT3 direction, float range, DirectX::XMFLOAT3 position, float spotInnerAngle, float spotOuterAngle);
-
-	const char* LightType(int num);
-
-	//Update helper methods
-	void UIUpdate(float deltaTime);
-	void UIInfo(float deltaTime);
 	
 	//Camera
 	std::shared_ptr<Camera> currentCamera;
@@ -108,5 +102,8 @@ private:
 	std::vector<Light> lights;
 
 	std::shared_ptr<Sky> sky;
+
+	//imgui
+	float backgroundColor[4] = { 0.05f, 0.05f, 0.05f, 0.0f };
 };
 

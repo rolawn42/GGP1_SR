@@ -52,7 +52,6 @@ void Material::PrepareMaterial(std::shared_ptr<Transform> transform, std::shared
 	for (auto& s : samplers) { pixelShader->SetSamplerState(s.first.c_str(), s.second); }
 
 	pixelShader->CopyAllBufferData();
-
 }
 
 DirectX::XMFLOAT4 Material::GetColorTint()
@@ -93,6 +92,11 @@ const char* Material::GetName()
 void Material::SetColorTint(DirectX::XMFLOAT4 cT)
 {
 	colorTint = cT;
+}
+
+void Material::SetColorTint3(DirectX::XMFLOAT3 cT)
+{
+	colorTint = XMFLOAT4(cT.x, cT.y, cT.z, 1.0f);
 }
 
 void Material::SetVertexShader(std::shared_ptr<SimpleVertexShader> vS)
