@@ -29,8 +29,6 @@ void Game::Initialize()
 	ImGui_ImplWin32_Init(Window::Handle());
 	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
 
-	transform = Transform();
-
 	// ImGui style
 	ImGui::StyleColorsDark();
 
@@ -161,7 +159,6 @@ void Game::CreateGeometry()
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cushionNSRV;
 	MAKESRV(cushionNSRV, FIXPATH(L"../../Assets/Textures/Cushion/Cushion_N.png"));
 
-
 	//CREATE MATERIALS
 
 	materials.push_back(std::make_shared<Material>("Denim Normal", XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f), vss[0], pss[0], 0.8f));
@@ -210,17 +207,6 @@ void Game::OnResize()
 	if (currentCamera)
 		currentCamera->UpdateProjectionMatrix(Window::AspectRatio());
 }
-
-DirectX::XMFLOAT4 Game::GetColorTint()
-{
-	return colorTint;
-}
-
-Transform Game::GetTransform()
-{
-	return transform;
-}
-
 
 // --------------------------------------------------------
 // Update your game here - user input, move objects, AI, etc.

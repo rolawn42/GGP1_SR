@@ -76,12 +76,6 @@ private:
 	//Entities
 	std::vector<std::shared_ptr<Entity>> entities;
 
-	//Vertex Shader Data
-	DirectX::XMFLOAT4 colorTint;
-	DirectX::XMFLOAT4 offset;
-
-	Transform transform;
-
 	// Note the usage of ComPtr below
 	//  - This is a smart pointer for objects that abide by the
 	//     Component Object Model, which DirectX objects do

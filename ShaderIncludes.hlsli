@@ -106,6 +106,7 @@ float3 CreateLight(Light light, float3 normal, float3 worldPosition, float3 came
     //point-spot: get the difference from this pixels position to the lights positions
     float3 toLightDirection = normalize(lerp(-light.direction, light.position - worldPosition, saturate((float) light.type)));
     //float3 toLightDirection = light.type == LIGHT_TYPE_DIRECTIONAL ? normalize(-light.direction) : normalize(light.position - worldPosition);
+    
     float3 toCameraDirection = normalize(cameraPosition - worldPosition);
     
     //calculate the difuse by taking the dot of the normal and the to light direction (returns their similarity, clamped to 0-1 by saturate)

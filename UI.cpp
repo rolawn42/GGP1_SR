@@ -4,6 +4,24 @@
 
 using namespace DirectX;
 
+//variables
+namespace {
+
+	bool demoVisibility = false;
+	bool titleBarViz = true;
+	bool windowLock = false;
+	bool styleEditor = false;
+
+	int queueSize = 60;
+	float graphInterval = 0.1f; //how long until the graph gets a new value
+	float currentWaitTime = 0.0f; //how long has passed since the last new value
+
+	std::deque<float> af_framerate(queueSize, 0);
+	std::deque<float> af_frametime(queueSize, 0);
+
+	ImGuiWindowFlags next_flags = 0;
+}
+
 void UIInfo(float deltaTime) {
 
 	// Feed fresh data to ImGui
@@ -20,27 +38,6 @@ void UIInfo(float deltaTime) {
 	// Determine new input capture
 	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
 	Input::SetMouseCapture(io.WantCaptureMouse);
-}
-
-//temp solution for global vars issue
-namespace {
-
-	bool demoVisibility = false;
-	bool titleBarViz = true;
-	bool windowLock = false;
-	bool styleEditor = false;
-
-	int queueSize = 60;
-	float graphInterval = 0.1f; //how long until the graph gets a new value
-	float currentWaitTime = 0.0f; //how long has passed since the last new value
-
-	float tempOffset[3] = { 0.0f, 0.0f, 0.0f };
-	float tempTint[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-
-	std::deque<float> af_framerate(queueSize, 0);
-	std::deque<float> af_frametime(queueSize, 0);
-
-	ImGuiWindowFlags next_flags = 0;
 }
 
 void UIUpdate(float deltaTime,
@@ -100,12 +97,6 @@ void UIUpdate(float deltaTime,
 				DF3("Position", transform->GetPosition(), [&](XMFLOAT3 x) { transform->SetPosition(x); });
 				DF3("Rotation", transform->GetRotation(), [&](XMFLOAT3 x) { transform->SetRotation(x); });
 
-				/*XMFLOAT3 tempPos = transform->GetPosition();
-				XMFLOAT3 tempRot = transform->GetRotation();
-
-				if (ImGui::DragFloat3("Position", &tempPos.x, UISTEP)) { transform->SetPosition(tempPos); }
-				if (ImGui::DragFloat3("Rotation", &tempRot.x, UISTEP)) { transform->SetRotation(tempRot); }*/
-
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
@@ -148,14 +139,6 @@ void UIUpdate(float deltaTime,
 				DF3("Rotation", transform->GetRotation(), [&](XMFLOAT3 x) { transform->SetRotation(x); });
 				DF3("Scale", transform->GetScale(), [&](XMFLOAT3 x) { transform->SetScale(x); });
 
-				/*DirectX::XMFLOAT3 tempPosition = transform->GetPosition();
-				DirectX::XMFLOAT3 tempRotation = transform->GetRotation();
-				DirectX::XMFLOAT3 tempScale = transform->GetScale();
-
-				if (ImGui::DragFloat3("Position", &tempPosition.x, UISTEP)) { transform->SetPosition(tempPosition); }
-				if (ImGui::DragFloat3("Rotation", &tempRotation.x, UISTEP)) { transform->SetRotation(tempRotation); }
-				if (ImGui::DragFloat3("Scale", &tempScale.x, UISTEP)) { transform->SetScale(tempScale); }*/
-
 				ImGui::TreePop();
 			}
 			ImGui::PopID();
@@ -173,18 +156,6 @@ void UIUpdate(float deltaTime,
 				DF2("Scale", materials[i]->GetUvScale(), [&](XMFLOAT2 x) { materials[i]->SetUvScale(x); });
 				DF2("Offset", materials[i]->GetUvOffset(), [&](XMFLOAT2 x) { materials[i]->SetUvOffset(x); });
 				DF1("Roughness", materials[i]->GetRoughness(), [&](float x) { materials[i]->SetRoughness(x); });
-
-				/*DirectX::XMFLOAT4 tempTint = materials[i]->GetColorTint();
-				DirectX::XMFLOAT2 tempScale = materials[i]->GetUvScale();
-				DirectX::XMFLOAT2 tempOffset = materials[i]->GetUvOffset();
-				float roughness = materials[i]->GetRoughness();
-
-				if (ImGui::DragFloat3("Tint", &tempTint.x, UISTEP)) { materials[i]->SetColorTint(tempTint); }
-				if (ImGui::DragFloat2("Scale", &tempScale.x, UISTEP)) { materials[i]->SetUvScale(tempScale); }
-				if (ImGui::DragFloat2("Offset", &tempOffset.x, UISTEP)) { materials[i]->SetUvOffset(tempOffset); }
-				if (ImGui::DragFloat("Roughness", &roughness, UISTEP, 0.0f, 1.0f)) { materials[i]->SetRoughness(roughness); }*/
-
-				//DF3("Tint", materials[i]->GetColorTint, materials[i]->SetColorTint)
 
 				for (auto& [name, ptr] : materials[i]->GetTextureSRVMap()) {
 					ImGui::Text(name.c_str());
